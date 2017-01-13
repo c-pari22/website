@@ -12,6 +12,12 @@
   <script src="{% static "website/js/landingpage_banner_custom.js" %}"></script>
   <script src="{% static "website/js/landingpage_main_custom.js" %}"></script>
   <script src="{% static "website/js/isotope.min.js" %}"></script>
+  <script type="text/javascript">
+  	$(document).ready(function() {
+	    var a = "{{ day|escapejs|safe }}";
+	    window.alert(a);
+    });
+  </script>
 {% endblock %}
 {% block content %}
 <!-- MAIN -->
@@ -19,21 +25,17 @@
   <div id="main-inner-wrapper">
     <div class="oh-wrapper">
       <header class="oh-title">Interviews @ 346 Soda Hall</header>
-      <table class="interviews" style="font-size: 15px; line-height: 3;" width="100%" align="center">
+      <table class="interviews" style="font-size: 15px; line-height: 3; align="center">
 		<div id="interview-title-row">
 			<tr>
 				<th>Time</th>
-				<th>Sunday</th>
-				<th>Monday</th>
-				<th>Tuesday</th>
-				<th>Wednesday</th>
-				<th>Thursday</th>
-				<th>Friday</th>
-				<th>Saturday</th>
+				{% for day in days %}
+				<th>{{ day }}</th>
+				{% endfor %}
 			</tr>
 			<tr>
 		    	<th>Date</th>
-		    	{% for date in week %}
+		    	{% for date in current_week %}
 		    	    <th>{{ date }}</th>
 		    	{% endfor %}
 		    </tr>		
@@ -43,7 +45,37 @@
 				<div class="interview-slot-row">
 					{% with start=start_times|keyvalue:i %}
 						<tr>
-							{% with slots=time_slot_dict|keyvalue:start %}
+							{% with slots=first_time_slot_dict|keyvalue:start %}
+								<th>{{ time_dict|keyvalue:start }}</th>
+									{% for slot in slots %}
+										{% if slot == None or not slot.is_available %}
+											<td class="unavailable"></td>								
+										{% else %}
+											<td class="available"><a href="/bookinterview/{{ slot.slot_id }}/">Available</a></td>
+										{% endif %}
+									{% endfor %}
+							{% endwith %}
+						</tr>
+					{% endwith %}		
+				</div>
+			{% endfor %}			
+		</div>
+	</table>
+	<table class="interviews" style="font-size: 15px; line-height: 3; align="center">
+		<div id="interview-title-row">
+			<tr>
+		    	<th>Date</th>
+		    	{% for date in next_week %}
+		    	    <th>{{ date }}</th>
+		    	{% endfor %}
+		    </tr>		
+		</div>
+		<div class="interview-slot-row-container">
+			{% for i in range %}
+				<div class="interview-slot-row">
+					{% with start=start_times|keyvalue:i %}
+						<tr>
+							{% with slots=second_time_slot_dict|keyvalue:start %}
 								<th>{{ time_dict|keyvalue:start }}</th>
 									{% for slot in slots %}
 										{% if slot == None or not slot.is_available %}

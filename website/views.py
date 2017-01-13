@@ -11,16 +11,16 @@ from users.models import *
 from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from datetime import datetime
-from datetime import timedelta
+from django.utils import timezone
+from datetime import date
+
 import calendar
+
+
 
 def index(request):
     template = loader.get_template('website/index.html')
     officers = UserProfile.objects.filter(user_type=3, approved=True)
-
-
-
     # context = RequestContext(request, { 'officers': officers })
     # return HttpResponse(template.render(context))
     return render(request, 'website/index.html', { 'officers': officers })
@@ -34,43 +34,74 @@ def ir(request):
 def interview(request):
     time_dict = {9: "9:00am - 10:00am", 10: "10:00am - 11:00am", 11: "11:00am - 12:00pm", 12: "12:00pm - 1:00pm", 13: "1:00pm - 2:00pm",
                 14: "2:00pm - 3:00pm", 15: "3:00pm - 4:00pm", 16: "4:00pm - 5:00pm"}
-    days_of_week = [0, 1, 2, 3, 4, 5, 6]
     start_times = {0: 9, 1: 10, 2: 11, 3: 12, 4: 13, 5: 14, 6: 15, 7: 16}
     interview_slot_list = InterviewSlot.objects.all()
+    print(interview_slot_list)
 
-    now = datetime.now()
-    date = datetime.day
+    now = timezone.localtime(timezone.now())
+    print(timezone.is_aware(now))
 
-    current_week = _get_dates_of_week(now)
+    current_week = _get_first_week(now)
+    days = [day.strftime('%A') for day in current_week]
     current_week_dates = [date.strftime('%b %d, %Y') for date in current_week]
 
-    time_slot_dict = {}
+    next_week = _get_second_week(now)
+    next_week_dates = [date.strftime('%b %d, %Y') for date in next_week]
+
+    days_of_week_order = [day.weekday() for day in current_week]
+
+    first_time_slot_dict = {}
+    second_time_slot_dict = {}
     start_time = 9
     for _ in range(len(time_dict)):
         filter_start_time = interview_slot_list.filter(hour=start_time)
-        imputed_start_time = []
-        for day in days_of_week:
-            slot = filter_start_time.filter(day_of_week=day)
-            if len(slot) == 0:
-                imputed_start_time.append(None)
+        imputed_start_time = [None for i in range(14)]
+        for i in range(len(days_of_week_order)):
+            slots = filter_start_time.filter(day_of_week=days_of_week_order[i])
+            if len(slots) == 0:
+                imputed_start_time[i] = None
+                imputed_start_time[i + 7] = None
             else:
-                #There should only be one slot from this filter
-                slot[0].date = current_week[day]
-                slot[0].save()
-                imputed_start_time.append(slot[0])
+                #There should be two slots from this filter, one for this weeks and next weeks
+                #sorted by date 
+                slots = sorted(list(slots), key=lambda slot: slot.date)
+                
+                today_slot = slots[0]
+                if (timezone.localtime(today_slot.date).weekday() == now.weekday()):
+                    # Considering today's slots, if hour is past or we are 20 minutes into the slot 
+                    # it becomes unavailable
+                    if (today_slot.hour < now.hour or (today_slot.hour == now.hour and now.minute >= 20)):
+                        today_slot.availability = False
+                        today_slot.save()
 
-        time_slot_dict[start_time] = imputed_start_time
-        start_time += 1
+                imputed_start_time[i] = slots[0]
+                imputed_start_time[i + 7] = slots[1]
 
-    
+        first_time_slot_dict[start_time] = imputed_start_time[:7]
+        second_time_slot_dict[start_time] = imputed_start_time[7:]
+        start_time += 1    
 
-    context = {'interview_slot_list': interview_slot_list, 'day': now.strftime("%A"), 'date': date, 
-    "time_dict": time_dict, "time_slot_dict": time_slot_dict, "start_times": start_times, 
-    "range": range(len(start_times)), "week": current_week_dates}
+    context = {'interview_slot_list': interview_slot_list, 'day': now.strftime("%b %d, %Y"), 
+    "time_dict": time_dict, "days": days, "first_time_slot_dict": first_time_slot_dict, 
+    "second_time_slot_dict": second_time_slot_dict, "start_times": start_times, 
+    "range": range(len(start_times)), "current_week": current_week_dates, "next_week": next_week_dates}
 
     return render(request, 'website/interview.html', context)
 
-def _get_dates_of_week(now):
+def _get_first_week(now):
+    this_week = [now]
+    for i in range(1, 7):
+        add_date = now + timezone.timedelta(days=i)
+        this_week.append(add_date)
+    return this_week
+def _get_second_week(now):
+    next_week = []
+    for i in range(7, 14):
+        add_date = now + timezone.timedelta(days=i)
+        next_week.append(add_date)
+    return next_week
+
+def get_dates_of_week(now):
     this_week = ['date' for i in range(7)]
     current_day = now.weekday()
     if current_day == 6:
@@ -155,7 +186,8 @@ def _send_confirmation_email(slot):
         return
     send_mail(
         'UPE Technical Interview Confirmation',
-        '{} has successfully booked an interview with UPE {}, {}, at {}.'.format(slot.student, slot.day_of_week, slot.date, slot.hour),
+        '{} has successfully booked an interview with UPE {}, {}, at {}.'.format(slot.student, slot.day_of_week, 
+            timezone.localtime(slot.date), slot.hour),
         'webdev.upe@berkeley.edu',
         [interviewer_email, student_email],
         fail_silently=False,

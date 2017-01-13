@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from datetime import date
 from django.forms.fields import MultipleChoiceField
+from django.utils import timezone
 
 from users.utils import *
 
@@ -111,14 +112,15 @@ class OfficerClass(models.Model):
     officer = models.ForeignKey('OfficerProfile')
 
 class InterviewSlot(models.Model):
-    DAY_OF_WEEK_CHOICES = (
-        (0, 'Sunday'),
-        (1, 'Monday'),
-        (2, 'Tuesday'),
-        (3, 'Wednesday'),
-        (4, 'Thursday'),
-        (5, 'Friday'),
-        (6, 'Saturday'),
+
+    DAY_OF_WEEK_CHOICES = (        
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
     )
     TIME_OF_DAY_CHOICES = (
         (9, '9am - 10am'),
@@ -141,15 +143,15 @@ class InterviewSlot(models.Model):
     student_email = models.EmailField(max_length=255, verbose_name=('Student Email'), blank=True)
     day_of_week = models.IntegerField(max_length=1, choices=DAY_OF_WEEK_CHOICES, default=1)
     hour = models.IntegerField(max_length=2, choices=TIME_OF_DAY_CHOICES, default=9)
-    date = models.DateField(verbose_name=('Date'))
+    date = models.DateTimeField(verbose_name=('DateTime'))
 
     @property
     def slot_id(self):
-        day_to_id = {1: 'm', 2:'tu', 3:'w', 4:'th', 5:'f'}
-        return day_to_id[self.day_of_week] + str(self.hour)
+        day_to_id = {0: 'm', 1:'tu', 2:'w', 3:'th', 4:'f', 5:'sa', 6: 'su'}
+        return day_to_id[self.day_of_week] + str(self.hour) + timezone.localtime(self.date).strftime('%m%d%y')
 
     def get_date(self):
-        return self.date.strftime('%b %d, %Y')
+        return timezone.localtime(self.date).strftime('%b %d, %Y')
 
     def get_day_of_week(self):
         return self.day_dict[self.day_of_week]
@@ -160,7 +162,7 @@ class InterviewSlot(models.Model):
         return self.name() + " " + self.officer_username
 
     def name(self):
-        return str(self.date) + " " + self.day_dict[self.day_of_week] + " " + self.time_dict[self.hour]
+        return str(timezone.localtime(self.date)) + " " + self.day_dict[self.day_of_week] + " " + self.time_dict[self.hour]
 
     def is_available(self):
         return self.availability

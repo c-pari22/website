@@ -7,6 +7,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 from datetime import date
+from django.utils import timezone
 
 from users.backends import CustomBackend
 from users.forms import *
@@ -189,8 +190,6 @@ def myprofile(request):
     if up is not None:
         interview_slots = InterviewSlot.objects.all().filter(officer_username=user.username)
 
-
-
     gen_req_tuple = []
     com_req_tuple = []
     """
@@ -260,9 +259,17 @@ def myprofile(request):
                 if day_num != None and time_num != None:
                     interview_slot = interview_slots.filter(hour=time_num, day_of_week=day_num)
                     if len(interview_slot) == 0:
-                        slot = InterviewSlot(hour=time_num, day_of_week=day_num, officer_username=user.username, availability=True, 
-                            date=date.today())
-                        slot.save()                           
+                        print(day_num)
+                        first_date = _get_first_date(int(day_num)) 
+                        print(first_date)     
+                        slot1 = InterviewSlot(hour=time_num, day_of_week=day_num, officer_username=user.username, availability=True, 
+                            date=first_date)
+                        slot1.save()                        
+                        second_date = _get_second_date(int(day_num))
+                        print(second_date)
+                        slot2 = InterviewSlot(hour=time_num, day_of_week=day_num, officer_username=user.username, availability=True, 
+                            date=second_date)
+                        slot2.save()                           
         elif request.POST['name'] == 'Remove These Hours':
             max_rows = 15
             for i in range(1, max_rows):
@@ -272,8 +279,9 @@ def myprofile(request):
                 time_num = request.POST.get(time_query)
                 if day_num != None and time_num != None:
                     interview_slot = interview_slots.filter(hour=time_num, day_of_week=day_num)
-                    if len(interview_slot) == 1:
-                        interview_slot[0].delete()            
+                    if len(interview_slot) == 2:
+                        interview_slot[0].delete()  
+                        interview_slot[1].delete()          
         elif request.POST['name'] == 'email':
             user.email = request.POST['value']
             user.save()
@@ -302,6 +310,29 @@ def myprofile(request):
     return render_to_response('users/profile.html',
             context_instance=RequestContext(request,{ 'bio': bio_form, 'up': up, 'resume_upload': resume_form, 'profile_pic': profile_pic_form }))
 
+def _get_first_date(day):
+    """takes in a weekday Monday - Sunday
+       returns the first possible date (inclusive of today) for the particular day value"""
+    curr = timezone.localtime(timezone.now())
+    for i in range(7):
+        weekday = curr.weekday()
+        if weekday == day:
+            return curr
+        curr = curr + timezone.timedelta(days=1)
+
+
+def _get_second_date(day):
+    """takes in a weekday Monday - Sunday
+       returns the second possible date (inclusive of today) for the particular day value"""
+    curr = timezone.localtime(timezone.now())
+    count = 0
+    for i in range(14):
+        weekday = curr.weekday()
+        if weekday == day:
+            count += 1
+        if count == 2:
+            return curr
+        curr = curr + timezone.timedelta(days=1)
 
 @user_passes_test(lambda u: UserProfile.objects.get(user=u).user_type == 3, login_url='/login/')
 def approve_user(request, user_id):
@@ -328,8 +359,6 @@ def officer_approval_dashboard(request):
     users = User.objects.filter(userprofile__approved=False)
     user_profiles = UserProfile.objects.filter(approved=False)
     return render(request, 'users/officer_approval_dashboard.html', {"users": users, "user_profiles": user_profiles})
-
-
 
 # STUFF FOR LATER
 
