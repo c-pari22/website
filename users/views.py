@@ -186,9 +186,30 @@ def myprofile(request):
     up = UserProfile.objects.get(user=user)
     bio_form = ""
     resume_form = ResumeUploadForm()
-    profile_pic_form = ProfilePicChangeForm() 
+    profile_pic_form = ProfilePicChangeForm()
+    no_hours = False
+    interview_slots = []
+    slot_times = []
     if up is not None:
         interview_slots = InterviewSlot.objects.all().filter(officer_username=user.username)
+    if len(interview_slots) == 0:
+        no_hours = True
+    else:
+        no_hours = False
+        #sorts first on day of the week and then by hour 
+        #do not change interview_slots so that we can keep using its filter features        
+        slots = sorted(interview_slots, key=lambda x: (x.day_of_week, x.hour))
+        #fringe to keep track of repeated day/hour slots (since we have two weeks)
+        slot_set = set()
+        for slot in slots:
+            slot_hour = (slot.day_of_week, slot.hour)
+            if not slot_hour in slot_set:
+                #user friendly information version (Monday, 9am - 10am), etc
+                #also keep machine friendly version in the html context 
+                slot_time = (slot.get_day_of_week(), slot.get_time(), slot_hour[0], slot_hour[1])
+                slot_times.append(slot_time)
+                slot_set.add((slot.day_of_week, slot.hour))
+
 
     gen_req_tuple = []
     com_req_tuple = []
@@ -259,29 +280,27 @@ def myprofile(request):
                 if day_num != None and time_num != None:
                     interview_slot = interview_slots.filter(hour=time_num, day_of_week=day_num)
                     if len(interview_slot) == 0:
-                        print(day_num)
-                        first_date = _get_first_date(int(day_num)) 
-                        print(first_date)     
+                        first_date = _get_first_date(int(day_num))     
                         slot1 = InterviewSlot(hour=time_num, day_of_week=day_num, officer_username=user.username, availability=True, 
                             date=first_date)
                         slot1.save()                        
                         second_date = _get_second_date(int(day_num))
-                        print(second_date)
                         slot2 = InterviewSlot(hour=time_num, day_of_week=day_num, officer_username=user.username, availability=True, 
                             date=second_date)
                         slot2.save()                           
         elif request.POST['name'] == 'Remove These Hours':
-            max_rows = 15
-            for i in range(1, max_rows):
-                day_query = 'day_value' + str(i)
-                time_query = 'time_value' + str(i)                
-                day_num = request.POST.get(day_query)
-                time_num = request.POST.get(time_query)
+            check_boxes = request.POST.getlist("hourbox")
+            for box in check_boxes:
+                vals = box.split(",")
+                day_query = vals[0]
+                time_query = vals[1]
+                day_num = int(day_query)
+                time_num = int(time_query)
                 if day_num != None and time_num != None:
                     interview_slot = interview_slots.filter(hour=time_num, day_of_week=day_num)
                     if len(interview_slot) == 2:
                         interview_slot[0].delete()  
-                        interview_slot[1].delete()          
+                        interview_slot[1].delete()         
         elif request.POST['name'] == 'email':
             user.email = request.POST['value']
             user.save()
@@ -308,7 +327,8 @@ def myprofile(request):
             up.grad_year = request.POST['value']
             up.save()
     return render_to_response('users/profile.html',
-            context_instance=RequestContext(request,{ 'bio': bio_form, 'up': up, 'resume_upload': resume_form, 'profile_pic': profile_pic_form }))
+            context_instance=RequestContext(request,{ 'bio': bio_form, 'up': up, 'resume_upload': resume_form,
+            'slot_times': slot_times, 'no_hours': no_hours, 'profile_pic': profile_pic_form }))
 
 def _get_first_date(day):
     """takes in a weekday Monday - Sunday

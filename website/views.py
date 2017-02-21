@@ -36,10 +36,8 @@ def interview(request):
                 14: "2:00pm - 3:00pm", 15: "3:00pm - 4:00pm", 16: "4:00pm - 5:00pm"}
     start_times = {0: 9, 1: 10, 2: 11, 3: 12, 4: 13, 5: 14, 6: 15, 7: 16}
     interview_slot_list = InterviewSlot.objects.all()
-    print(interview_slot_list)
 
     now = timezone.localtime(timezone.now())
-    print(timezone.is_aware(now))
 
     current_week = _get_first_week(now)
     days = [day.strftime('%A') for day in current_week]
@@ -67,12 +65,10 @@ def interview(request):
                 slots = sorted(list(slots), key=lambda slot: slot.date)
                 
                 today_slot = slots[0]
-                if (timezone.localtime(today_slot.date).weekday() == now.weekday()):
-                    # Considering today's slots, if hour is past or we are 20 minutes into the slot 
-                    # it becomes unavailable
-                    if (today_slot.hour < now.hour or (today_slot.hour == now.hour and now.minute >= 20)):
-                        today_slot.availability = False
-                        today_slot.save()
+                if (timezone.localtime(today_slot.date).date() <= now.date()):
+                    #today's column will be displayed but none of the slots will be available                    
+                    today_slot.availability = False
+                    today_slot.save()
 
                 imputed_start_time[i] = slots[0]
                 imputed_start_time[i + 7] = slots[1]
