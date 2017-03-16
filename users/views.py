@@ -5,6 +5,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib import messages
 
 from datetime import date
 from django.utils import timezone
@@ -182,6 +183,7 @@ def user_login(request):
 
 @login_required
 def myprofile(request):
+    messages.warning(request, "You have been warned.")
     user = request.user
     up = UserProfile.objects.get(user=user)
     bio_form = ""
@@ -190,6 +192,7 @@ def myprofile(request):
     no_hours = False
     interview_slots = []
     slot_times = []
+    slot_appointments = []
     if up is not None:
         interview_slots = InterviewSlot.objects.all().filter(officer_username=user.username)
     if len(interview_slots) == 0:
@@ -197,8 +200,9 @@ def myprofile(request):
     else:
         no_hours = False
         #sorts first on day of the week and then by hour 
-        #do not change interview_slots so that we can keep using its filter features        
-        slots = sorted(interview_slots, key=lambda x: (x.day_of_week, x.hour))
+        #do not change interview_slots so that we can keep using its filter features
+        interview_slots.order_by('date')
+        slots = interview_slots       
         #fringe to keep track of repeated day/hour slots (since we have two weeks)
         slot_set = set()
         for slot in slots:
@@ -207,8 +211,17 @@ def myprofile(request):
                 #user friendly information version (Monday, 9am - 10am), etc
                 #also keep machine friendly version in the html context 
                 slot_time = (slot.get_day_of_week(), slot.get_time(), slot_hour[0], slot_hour[1])
-                slot_times.append(slot_time)
+                slot_times.append(slot_time)                
                 slot_set.add((slot.day_of_week, slot.hour))
+
+            # if this slot is booked right now, we store it in a separate list to be viewed in profile
+            if not slot.availability:
+                if len(slot.student) > 0:
+                    week = 0
+                    if slot_hour in slot_set:
+                        week = 1
+                    slot_appt = (slot.get_day_of_week(), slot.get_time(), slot.student, slot.get_date(), slot_hour[0], slot_hour[1], week)
+                    slot_appointments.append(slot_appt)
 
 
     gen_req_tuple = []
@@ -300,7 +313,37 @@ def myprofile(request):
                     interview_slot = interview_slots.filter(hour=time_num, day_of_week=day_num)
                     if len(interview_slot) == 2:
                         interview_slot[0].delete()  
-                        interview_slot[1].delete()         
+                        interview_slot[1].delete()
+        elif request.POST['name'] == 'Cancel these appointments':
+            check_boxes = request.POST.getlist("hourbox")
+            for box in check_boxes:
+                vals = box.split(",")
+                student_name = vals[0]
+                day_query = vals[1]
+                time_query = vals[2]
+                week = vals[3]
+                day_num = int(day_query)
+                time_num = int(time_query)
+                if day_num != None and time_num != None:
+                    interview_slots = interview_slots.filter(student=student_name, hour=time_num, day_of_week=day_num)
+                    interview_slots.order_by('date')
+                    if len(interview_slots) == 1:
+                        interview_slots[0].student = ""
+                        interview_slots[0].student_email = ""
+                        interview_slots[0].availability = True
+                        interview_slots[0].save() 
+                    elif len(interview_slots) == 2:
+                        interview_slots.fil
+                        if week == 0:
+                            interview_slots[0].student = ""
+                            interview_slots[0].student_email = ""
+                            interview_slots[0].availability = True
+                            interview_slots[0].save()
+                        else:
+                            interview_slots[1].student = ""
+                            interview_slots[1].student_email = ""
+                            interview_slots[1].availability = True
+                            interview_slots[1].save()
         elif request.POST['name'] == 'email':
             user.email = request.POST['value']
             user.save()
@@ -328,7 +371,7 @@ def myprofile(request):
             up.save()
     return render_to_response('users/profile.html',
             context_instance=RequestContext(request,{ 'bio': bio_form, 'up': up, 'resume_upload': resume_form,
-            'slot_times': slot_times, 'no_hours': no_hours, 'profile_pic': profile_pic_form }))
+            'slot_times': slot_times, 'slot_appts': slot_appointments, 'no_hours': no_hours, 'profile_pic': profile_pic_form }))
 
 def _get_first_date(day):
     """takes in a weekday Monday - Sunday

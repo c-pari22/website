@@ -97,7 +97,7 @@ def _get_second_week(now):
         next_week.append(add_date)
     return next_week
 
-def get_dates_of_week(now):
+def _get_dates_of_week(now):
     this_week = ['date' for i in range(7)]
     current_day = now.weekday()
     if current_day == 6:

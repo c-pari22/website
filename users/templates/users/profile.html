@@ -17,6 +17,7 @@
 <link href='http://fonts.googleapis.com/css?family=Arimo:400,700' rel='stylesheet' type='text/css'>
 {% endblock %}
 {% block content %}
+
 <div class="content-container">
     <div class="profile-pic-container">
         <img src="/media/{{ up.picture }}" class="circular profile-pic">
@@ -54,7 +55,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                        <h4 class="modal-title" id="myModalLabel">Edit your Officer Bio</h4>
+                        <h4 class="modal-title" id="myModalLabel2">Edit your Officer Bio</h4>
                     </div>
 
                     <form action="{% url "myprofile" %}" method="post" >
@@ -72,7 +73,7 @@
                     <form id="editInterviews" action="{% url "myprofile" %}" method="post" >
                         {% csrf_token %}
                         <div class="modal-header">
-                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>  <h4 class="modal-title" id="myModalLabel">Edit the hours you hold technical interviews</h4>  
+                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>  <h4 class="modal-title" id="myModalLabel3">Edit the hours you hold technical interviews</h4>  
                         </div>
                         <div class="modal-body"> 
                             <div class="container-fluid">
@@ -117,6 +118,50 @@
         </div>
     </div>
 
+    <div class="modal fade" id="myModal4" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form action="{% url "myprofile" %}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                            <h4 class="modal-title" id="myModalLabel4">Current Interview Appointments</h4>
+                        </div>
+                        <div class="modal-body">
+                            <div class="container-fluid">
+                                <h4>Your current interview appointments (empty if none scheduled)</h4>
+                                {% for appt in slot_appts %}
+                                    <div class="row">
+                                        <div class="col-md-1">
+                                            <span>{{ appt.0 }}</span>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <span>{{ appt.1 }}</span>                                         
+                                        </div>
+                                        <div class="col-md-2">
+                                            <span>{{ appt.2 }}</span>                                         
+                                        </div>
+                                        <div class="col-md-2">
+                                            <span>{{ appt.3 }}</span>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <input type="checkbox" name="hourbox" value="{{ appt.2 }},{{ appt.4 }},{{ appt.5 }},{{ appt.6 }}"></input>
+                                        </div>
+                                    </div>
+                                {% endfor %}                                                              
+                            </div>                            
+                        </div>
+                        <div class="modal-footer">
+                            
+                            <!-- <button type="button" class="btn btn-primary">Save changes</button> -->
+                            <input type="submit" name="name" value="Cancel these appointments" class="btn btn-primary" />
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     <div class="personal-info-container">
         <span class="title">Personal <i class="fa fa-user"></i></span>
         <ul>
@@ -135,7 +180,7 @@
                 <label class="attribute"><i class="fa fa-globe"></i> Website*:</label>
 				
                 <a href="#"
-+                    id="personal_website"
+                    id="personal_website"
                     data-type="text"
                     data-pk="1"
                     data-url="/myprofile/"
@@ -182,14 +227,17 @@
             </li>
             {% endif %}
 			
-			      {% if up.get_user_type_display == "Officer" %}
-		        <li><i class="fa fa-comment"></i> Officer Bio: <a href = "#" data-toggle="modal" data-target="#myModal2">
-              Edit</a>
+			{% if up.get_user_type_display == "Officer" %}
+		    <li><i class="fa fa-comment"></i> Officer Bio: <a href = "#" data-toggle="modal" data-target="#myModal2">Edit</a>
             </li>
-		        {% endif %}
+		    {% endif %}
+
             {% if up.can_interview %}
             <li><i class="fa fa-comment"></i> Technical Interviews <a href = "#" data-toggle="modal" data-target="#myModal3" onclick="resetModalForm()">
               Edit Hours</a>
+            </li>
+            <li>
+                <i class="fa fa-comment"></i> Current Interviews <a href="#" data-toggle="modal" data-target="#myModal4"> View/Edit Appointments</a>
             </li>
             {% endif %}
                 <!-- <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#resume-modal">
@@ -237,7 +285,6 @@
     </div>
 </div>
 {% endblock %}
-
 {% block javascript %}
 <script src="{% static "website/js/jquery-2.1.1.min.js" %}"></script>
 <script src="{% static "website/js/bootstrap.min.js" %}"></script>
