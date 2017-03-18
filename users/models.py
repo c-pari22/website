@@ -144,6 +144,7 @@ class InterviewSlot(models.Model):
     day_of_week = models.IntegerField(max_length=1, choices=DAY_OF_WEEK_CHOICES, default=1)
     hour = models.IntegerField(max_length=2, choices=TIME_OF_DAY_CHOICES, default=9)
     date = models.DateTimeField(verbose_name=('DateTime'))
+    
 
     @property
     def slot_id(self):
@@ -151,7 +152,7 @@ class InterviewSlot(models.Model):
         return day_to_id[self.day_of_week] + str(self.hour) + timezone.localtime(self.date).strftime('%m%d%y')
 
     def get_date(self):
-        return timezone.localtime(self.date).strftime('%b %d, %Y')
+        return self.date.strftime('%b %d, %Y')
 
     def get_day_of_week(self):
         return self.day_dict[self.day_of_week]

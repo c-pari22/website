@@ -293,7 +293,7 @@ def myprofile(request):
                 if day_num != None and time_num != None:
                     interview_slot = interview_slots.filter(hour=time_num, day_of_week=day_num)
                     if len(interview_slot) == 0:
-                        first_date = _get_first_date(int(day_num))     
+                        first_date = _get_first_date(int(day_num))   
                         slot1 = InterviewSlot(hour=time_num, day_of_week=day_num, officer_username=user.username, availability=True, 
                             date=first_date)
                         slot1.save()                        

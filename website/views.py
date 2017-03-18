@@ -65,7 +65,7 @@ def interview(request):
                 slots = sorted(list(slots), key=lambda slot: slot.date)
                 
                 today_slot = slots[0]
-                if (timezone.localtime(today_slot.date).date() <= now.date()):
+                if (today_slot.date.date() <= now.date()):
                     #today's column will be displayed but none of the slots will be available                    
                     today_slot.availability = False
                     today_slot.save()
@@ -183,7 +183,7 @@ def _send_confirmation_email(slot):
     send_mail(
         'UPE Technical Interview Confirmation',
         '{} has successfully booked an interview with UPE {}, {}, at {}.'.format(slot.student, slot.day_of_week, 
-            timezone.localtime(slot.date), slot.hour),
+            slot.get_date(), slot.hour),
         'webdev.upe@berkeley.edu',
         [interviewer_email, student_email],
         fail_silently=False,
